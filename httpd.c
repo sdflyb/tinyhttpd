@@ -58,12 +58,12 @@ void* accept_request(void* arg)
  	char path[512];
  	size_t i, j;
  	struct stat st;
- 	int cgi = 0;      /* becomes true if server decides this is a CGI
-                    * program */
+ 	int cgi = 0;      /* becomes true if server decides this is a CGI program */
  	char *query_string = NULL;
 
  	numchars = get_line(client, buf, sizeof(buf));
- 	i = 0; j = 0;
+ 	i = 0; 
+	j = 0;
  	while (!ISspace(buf[j]) && (i < sizeof(method) - 1))
  	{
   		method[i] = buf[j];
@@ -79,7 +79,7 @@ void* accept_request(void* arg)
  	}
 
  	if (strcasecmp(method, "POST") == 0)
-  	cgi = 1;
+  		cgi = 1;
 
  	i = 0;
  	while (ISspace(buf[j]) && (j < sizeof(buf)))
