@@ -319,6 +319,7 @@ int get_line(int sock, char *buf, int size)
   {
    if (c == '\r')
    {
+    /*MSG_PEEK 表示数据并未从缓存中删除,下一次读取的还是该字符*/
     n = recv(sock, &c, 1, MSG_PEEK);
     /* DEBUG printf("%02X\n", c); */
     if ((n > 0) && (c == '\n'))
