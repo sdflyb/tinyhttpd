@@ -1,8 +1,9 @@
 ## 更新日志
 2017-01-25  
 ---
-1. 修改makefile 去掉 -lsocket， 将-lpthread改为-pthread
-2. 修改htdocs/*.cgi中的perl路径 
+1. 修改makefile:去掉 -lsocket,将-lpthread改为-pthread
+2. 修改htdocs/*.cgi中的perl路径
+3. 修改httpd.c中的警告 
  
  
 ## 以下是原文的README文件内容
