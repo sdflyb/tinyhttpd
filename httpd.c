@@ -26,8 +26,6 @@
 #include <sys/wait.h>
 #include <stdlib.h>
 
-#define ISspace(x) isspace((int)(x))
-
 #define SERVER_STRING "Server: jdbhttpd/0.1.0\r\n"
 
 void* accept_request(void*);
@@ -36,11 +34,11 @@ void cat(int, FILE *);
 void cannot_execute(int);
 void error_die(const char *);
 void execute_cgi(int, const char *, const char *, const char *);
-int get_line(int, char *, int);
+int  get_line(int, char *, int);
 void headers(int, const char *);
 void not_found(int);
 void serve_file(int, const char *);
-int startup(u_short *);
+int  startup(u_short *);
 void unimplemented(int);
 
 /**********************************************************************/
@@ -52,59 +50,59 @@ void* accept_request(void* arg) {
 	char buf[1024];
 	int numchars;
  	int client = *(int*)(arg);
- 	char method[255];
- 	char url[255];
+ 	char *method = NULL;
+ 	char *url = NULL;
  	char path[512];
- 	size_t i, j;
  	struct stat st;
  	int cgi = 0;      /* becomes true if server decides this is a CGI program */
  	char *query_string = NULL;
 
  	numchars = get_line(client, buf, sizeof(buf));
- 	for (j = 0; !ISspace(buf[j]) &&  + 1 < sizeof(method); ++j)
-  		method[j] = buf[j];
- 	method[j] = '\0';
 
- 	if (strcasecmp(method, "GET") && strcasecmp(method, "POST")) {
+//	puts(buf);
+
+	method = strtok(buf, " ");
+ 	if (method == NULL || (strcasecmp(method, "GET") && strcasecmp(method, "POST"))) {
   		unimplemented(client);
   		return NULL;
  	}
 
- 	if (strcasecmp(method, "POST") == 0)
-  		cgi = 1;
-
- 	while (ISspace(buf[j]) && j < sizeof(buf) )
-  		j++;
-	i = 0;
- 	while (!ISspace(buf[j]) && i + 1 < sizeof(url) && j < sizeof(buf))
-  		url[i++] = buf[j++];
- 	url[i] = '\0';
-
- 	if (strcasecmp(method, "GET") == 0){
-  		query_string = url;
-  		while (*query_string != '?' && *query_string != '\0')
-   			query_string++;
-  		if (*query_string == '?'){
-  			cgi = 1;
-   			*query_string = '\0';
-   			query_string++;
-  		}
- 	}
-
+	url = strtok(NULL, " ");
+	if (url == NULL) {
+		unimplemented(client);
+		return NULL;
+	}
 	sprintf(path, "htdocs%s", url);
  	if (path[strlen(path) - 1] == '/')
   		strcat(path, "index.html");
+ 	
+	if (strcasecmp(method, "POST") == 0)
+  		cgi = 1;
+
+ 	if (strcasecmp(method, "GET") == 0){
+  		query_string = strtok(NULL, " ");
+		if (query_string != NULL) {
+  			while (*query_string != '?' && *query_string != '\0')
+   				query_string++;
+  			if (*query_string == '?'){
+  				cgi = 1;
+   				*query_string = '\0';
+   				query_string++;
+  			}
+		}
+ 	}
+
  	if (stat(path, &st) == -1) {
-  		while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
+  		while (numchars > 0 && strcmp("\n", buf))  /* read & discard headers */
    			numchars = get_line(client, buf, sizeof(buf));
   		not_found(client);
  	}
  	else {
-  		if ((st.st_mode & S_IFMT) == S_IFDIR)
+  		if ((st.st_mode&S_IFMT) == S_IFDIR)
    			strcat(path, "/index.html");
-  		if ((st.st_mode & S_IXUSR) || (st.st_mode & S_IXGRP) ||(st.st_mode & S_IXOTH)    )
+  		if ((st.st_mode&S_IXUSR) || (st.st_mode&S_IXGRP) || (st.st_mode&S_IXOTH) )
    			cgi = 1;
-  		if (!cgi)
+  		if (cgi == 0)
    			serve_file(client, path);
   		else
    			execute_cgi(client, path, method, query_string);
