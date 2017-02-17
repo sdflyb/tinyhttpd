@@ -1,7 +1,6 @@
 ## 参考资源
 1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409)
 
-
 ## http请求报文
 1. 请求行 requestline：包括请求方法字段(get或post),URL字段和HTTP协议版本字段
 2. 请求头部 header
