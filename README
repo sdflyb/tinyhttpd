@@ -1,8 +1,15 @@
+## 注释
 修改了部分程序，并添加了一些注释---------------------------------画蛇添足
 
+## 使用方法
+1. git clone https://github.com/lyb6537/tinyhttpd
+2. cd tinyhttpd/
+3. make clean && make
+4. ./httpd
+5. 在浏览器输入127.0.0.1:端口号
+
 ## 参考资源
-1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409)
- 
+1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
  
 ## 以下是原文的README文件内容
  This software is copyright 1999 by J. David Blackstone.  Permission
