@@ -14,10 +14,11 @@
  */
 /*
  *add by liuyunbin
- *   更新日志
+ *   
  *   修改makefile:去掉 -lsocket,将-lpthread改为-pthread
  *   修改htdocs中的perl路径
- *   修改httpd.c中的警告
+ *  
+ *   修改了部分程序，并添加了注释------------------------画蛇添足
  *   
  *   http请求报文包括
  *   1. 请求行 requestline：包括请求方法字段(get或post),URL字段和HTTP协议版本字段
@@ -42,35 +43,42 @@
 
 #define SERVER_STRING "Server: jdbhttpd/0.1.0\r\n"
 
-void* accept_request(void*);
-void  bad_request(int);
-void  cat(int, FILE *);
-void  cannot_execute(int);
-void  error_die(const char *);
-void  execute_cgi(int, const char *, const char *, const char *);
-int   get_line(int, char *, int);
-void  headers(int, const char *);
-void  not_found(int);
-void  serve_file(int, const char *);
-int   get_server_socket();
-void  unimplemented(int);
+void* accept_request(void*);                                         /*  与客户端交互                 */
+void  bad_request(int);                                              /* 客户端请求错误                */
+void  cat(int, FILE *);                                              /* 将文件内容发给客户端          */
+void  cannot_execute(int);                                           /* cgi程序执行错误               */
+void  error_die(const char *);                                       /* 打印错误，退出                */
+void  execute_cgi(int, const char *, const char *, const char *);    /* 执行cgi程序                   */
+int   get_line(int, char *, int);                                    /* 从客户端获取一行              */
+void  headers(int, const char *);                                    /* 将http头部信息发给客户端      */
+void  not_found(int);                                                /* 资源未找到                    */
+void  serve_file(int, const char *);                                 /* 将cgi文件发给客户端           */
+int   get_server_socket();                                           /* 获取服务器套结字socket        */
+void  unimplemented(int);                                            /* http请求的method服务器不支持  */
 
+/* 读取并忽略header之前的信息   */
 void read_and_discard_heads(int client){
 	char buf[1024];
 
-	while (get_line(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf))  /* read & discard headers */
+	while (get_line(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0)  /* read & discard headers */
 		;
 }
 
 /**********************************************************************/
+/*  main() 主函数
+ *  1. 创建服务器套结字
+ *  2. 等待客户端的连接
+ *  3. 产生新的线程处理与客户端的连接
+ *  4. 新线程处理与客户端的连接，主进程跳回第2步
+ */
 int main(void) {
- 	int server_sock;
+ 	int server_sock;                               
  	int client_sock;
  	struct sockaddr_in client_name;
  	socklen_t client_name_len = sizeof(client_name);
  	pthread_t newthread;
 
- 	server_sock = get_server_socket();
+	server_sock = get_server_socket(); /*获取服务器端的套结字*/
 
  	while (1) {
   		client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
@@ -94,7 +102,15 @@ int main(void) {
  * port.
  * Parameters: pointer to variable containing the port to connect on
  * Returns: the socket */
-/**********************************************************************/
+/***********************************************************************/
+/* get_server_socket() 获取服务器套结字
+ * 1. 创建socket套结字
+ * 2. 创建sockaddr_in结构体，并将指定ip和端口号将其填充
+ * 3. 将socket套结字与sockaddr_in结构体相绑定
+ * 4. 如果是动态分配端口号，则通过getsockname()获取其端口号, 并输出
+ * 5. 将该socket套结字转为被动套结字，并处于监听状态
+ * 6. 返回该套结字
+ */
 int get_server_socket() {
  	int httpd_sock;
  	u_short port = 0;
@@ -109,16 +125,15 @@ int get_server_socket() {
  	name.sin_addr.s_addr = htonl(INADDR_ANY);
  	if (bind(httpd_sock, (struct sockaddr *)&name, sizeof(name)) < 0)
   		error_die("bind");
- 	if (port == 0)  /* if dynamically allocating a port */
- 	{
+ 	if (port == 0)  /* if dynamically allocating a port */{
   		socklen_t namelen = sizeof(name);
   		if (getsockname(httpd_sock, (struct sockaddr *)&name, &namelen) == -1)
    			error_die("getsockname");
   		port = ntohs(name.sin_port);
  	}
+ 	printf("httpd running on port %d\n", port);
  	if (listen(httpd_sock, 5) < 0)
   		error_die("listen");
- 	printf("httpd running on port %d\n", port);
 
  	return httpd_sock;
 }
@@ -128,6 +143,7 @@ int get_server_socket() {
  * on value of errno, which indicates system call errors) and exit the
  * program indicating an error. */
 /**********************************************************************/
+/* 输出异常并退出   */
 void error_die(const char *sc) {
  	perror(sc);
  	exit(1);
@@ -138,7 +154,16 @@ void error_die(const char *sc) {
  * return.  Process the request appropriately.
  * Parameters: the socket connected to the client */
 /**********************************************************************/
-
+/* accept_request() 与客户端交互
+ * 1. 从客户端获得请求行数据
+ * 2. 将请求行数据切割成method和url，method为GET或POST，url为请求资源
+ * 3. 将路径信息存储在path中
+ * 4. 如果method为POST或method为GET且url有参数，则表示有CGI程序，cgi=1
+ * 5. 如果method为GET且url有参数，则将query_string指向参数
+ * 6. 查看文件资源信息，如果找不到，则返回给客户端
+ * 7. 如果文件具有可执行权限，cgi=1
+ * 8. 如果cgi=0,将文件返回给客户端，否则，执行该文件
+ */
 void* accept_request(void* arg) {
 	char buf[1024];
  	int  client = *(int*)(arg);
@@ -152,7 +177,7 @@ void* accept_request(void* arg) {
  	get_line(client, buf, sizeof(buf));
 
 	method = strtok(buf, " ");
- 	if (method == NULL || (strcasecmp(method, "GET") && strcasecmp(method, "POST"))) {
+ 	if (method == NULL || (strcasecmp(method, "GET") != 0 && strcasecmp(method, "POST")) != 0) {
   		unimplemented(client);
   		return NULL;
  	}
@@ -195,12 +220,12 @@ void* accept_request(void* arg) {
   		else
    			execute_cgi(client, path, method, query_string);
  	}
-
+/*
 	printf( "      method: %s\n",         method );
 	printf( "         url: %s\n",            url );
 	printf( "        path: %s\n",           path );
 	printf( "query_string: %s\n",   query_string );
-
+*/
  	close(client);
 
  	return NULL;
@@ -225,20 +250,16 @@ int get_line(int sock, char *buf, int size) {
  	char c = '\0';
 
 	/* i + 1 < size 为'\0' 空出一位来  */
- 	while (i + 1 < size && c != '\n') {
-  		if (recv(sock, &c, 1, 0) > 0 ){		
-   			if (c == '\r') {
-    				/*MSG_PEEK 表示数据并未从缓存中删除,下一次读取的还是该字符*/
-    				if (recv(sock, &c, 1, MSG_PEEK) > 0 && c == '\n')
-     					recv(sock, &c, 1, 0);
-    				else
-     					c = '\n';
-   			}
-   			buf[i++] = c;
-  		}
-  		else
-   			c = '\n';
- 	}
+ 	while (i + 1 < size && c != '\n' && recv(sock, &c, 1, 0) > 0 ) {		
+   		if (c == '\r') {
+    			/*MSG_PEEK 表示数据并未从缓存中删除,下一次读取的还是该字符*/
+    			if (recv(sock, &c, 1, MSG_PEEK) > 0 && c == '\n')
+     				recv(sock, &c, 1, 0);
+    			else
+     				c = '\n';
+   		}
+   		buf[i++] = c;
+  	}
  	buf[i] = '\0';
  
  	return i;
@@ -249,6 +270,7 @@ int get_line(int sock, char *buf, int size) {
  * implemented.
  * Parameter: the client socket */
 /**********************************************************************/
+/* http服务请求的method方法该服务器不支持  */
 void unimplemented(int client) {
  	char buf[1024];
 
@@ -273,6 +295,7 @@ void unimplemented(int client) {
 /**********************************************************************/
 /* Give a client a 404 not found status message. */
 /**********************************************************************/
+/* 资源未找到 */
 void not_found(int client) {
  	char buf[1024];
 
@@ -303,10 +326,22 @@ void not_found(int client) {
  * Parameters: client socket descriptor
  *             path to the CGI script */
 /**********************************************************************/
+/* execute_cgi()  执行文件
+ * 1. 创建两个管道，cgi_output[2]用于子程序向主程序传递信息, cgi_input[2]用于主程序向子程序传递信息
+ * 2. 子程序：
+ *            将标准输出重定向到cgi_output[1], 将标准输入重定向到cgi_input[0]
+ *            关闭管道cgi_output[0]的输入口,cgi_input[1]的输出口
+ *            添加环境变量，并执行程序
+ * 3. 主程序： 
+ *            关闭管道cgi_output的输出口,cgi_input的输入口
+ *            如果 method为POST，将从客户端接收的数据通过管道cgi_input发送给子程序
+ *            将通过管道cgi_outout接收的数据发送给客户端
+ *            关闭管道cgi_output的输入口cgi_input的输出口，等待子程序的消亡
+ */
 void execute_cgi(int client, const char *path, const char *method, const char *query_string) {
  	char buf[1024] = "A";
- 	int cgi_output[2];
- 	int cgi_input[2];
+ 	int cgi_output[2];  /*子程序向主程序传递信息的管道*/
+ 	int cgi_input[2];   /*主程序向子程序传递信息的管道*/
  	pid_t pid;
  	int i;
  	char c;
@@ -377,6 +412,7 @@ void execute_cgi(int client, const char *path, const char *method, const char *q
 /* Inform the client that a request it has made has a problem.
  * Parameters: client socket */
 /**********************************************************************/
+/* 客户端错误的请求  */
 void bad_request(int client) {
  	char buf[1024];
 
@@ -397,6 +433,7 @@ void bad_request(int client) {
 /* Inform the client that a CGI script could not be executed.
  * Parameter: the client socket descriptor. */
 /**********************************************************************/
+/* 执行cgi程序时错误  */
 void cannot_execute(int client) {
  	char buf[1024];
 
@@ -417,13 +454,15 @@ void cannot_execute(int client) {
  *              file descriptor
  *             the name of the file to serve */
 /**********************************************************************/
+/* 发送文件信息给客户端 */
 void serve_file(int client, const char *filename) {
  	FILE *resource = NULL;
  	
 	read_and_discard_heads(client);
  	resource = fopen(filename, "r");
- 	if (resource == NULL)
+ 	if (resource == NULL) {
   		not_found(client);
+	}
  	else {
   		headers(client, filename);
   		cat(client, resource);
@@ -436,6 +475,7 @@ void serve_file(int client, const char *filename) {
 /* Parameters: the socket to print the headers on
  *             the name of the file */
 /**********************************************************************/
+/* 将 http的header信息发送给客户端 */
 void headers(int client, const char *filename) {
  	char buf[1024];
  	(void)filename;  /* could use filename to determine file type */
@@ -457,6 +497,7 @@ void headers(int client, const char *filename) {
  * Parameters: the client socket descriptor
  *             FILE pointer for the file to cat */
 /**********************************************************************/
+/* 将文件内容发送给客户端  */
 void cat(int client, FILE *resource) {
  	char buf[1024];
 
