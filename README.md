@@ -5,7 +5,8 @@
 2. 修改htdocs中的check.cgi和color.cgi中的perl路径
 3. 添加color.cgi的可执行权限，chmod +x color.cgi
 4. mv README README.md
-
+5. 修改代码风格，使用TAB进行缩进--------吐槽一下源代码使用一个空格进行缩进
+6. 修改源码，去除了编译的警告  
 
 ## 以下是原先README原文
  This software is copyright 1999 by J. David Blackstone.  Permission
