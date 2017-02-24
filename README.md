@@ -8,6 +8,16 @@
 4. ./httpd
 5. 在浏览器输入127.0.0.1:端口号
 
+## 修改日志
+
+### 2017 02 24 ---- 修改以后在ubuntu下可以运行
+1. 去掉Makefile里的-lsocket,将-lpthread改为-pthread
+2. 修改htdocs中的check.cgi和color.cgi中的perl路径
+3. 添加color.cgi的可执行权限，chmod +x color.cgi
+4. mv README README.md
+5. 修改代码风格，使用TAB进行缩进--------吐槽一下源代码使用一个空格进行缩进
+6. 修改源码，去除了编译的警告
+
 ## 参考资源
 1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
  
