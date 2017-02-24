@@ -4,4 +4,4 @@ httpd: httpd.c
 	gcc -W -Wall -pthread -o httpd httpd.c
 
 clean:
-	rm -rf httpd
+	rm httpd

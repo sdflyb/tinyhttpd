@@ -1,17 +1,13 @@
-## 注释
-修改了部分程序，并添加了一些注释---------------------------------画蛇添足
+## 修改日志
 
-## 使用方法
-1. git clone https://github.com/lyb6537/tinyhttpd
-2. cd tinyhttpd/
-3. make clean && make
-4. ./httpd
-5. 在浏览器输入127.0.0.1:端口号
+### 2017 02 24
+1. 去掉Makefile里的-lsocket,将-lpthread改为-pthread
+2. 修改htdocs中的check.cgi和color.cgi中的perl路径
+3. 添加color.cgi的可执行权限，chmod +x color.cgi
+4. mv README README.md
 
-## 参考资源
-1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
- 
-## 以下是原文的README文件内容
+
+## 以下是原先README原文
  This software is copyright 1999 by J. David Blackstone.  Permission
 is granted to redistribute and modify this software under the terms of
 the GNU General Public License, available at http://www.gnu.org/ .
