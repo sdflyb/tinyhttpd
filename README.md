@@ -15,7 +15,8 @@
 6. 修改源码，去除了编译的警告
 
 ## 参考资源
-1. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
+1. [原项目主页](http://tinyhttpd.sourceforge.net/)
+2. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
  
 ## 以下是原文的README文件内容
  This software is copyright 1999 by J. David Blackstone.  Permission
