@@ -16,7 +16,8 @@
 
 ## 参考资源
 1. [原项目主页](http://tinyhttpd.sourceforge.net/)
-2. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
+2. [经典](http://phenix3443.github.io/code-analysis/tinyhttpd-analysis.html)
+3. [参考博客](http://blog.csdn.net/yzhang6_10/article/details/51534409) 
  
 ## 以下是原文的README文件内容
  This software is copyright 1999 by J. David Blackstone.  Permission
