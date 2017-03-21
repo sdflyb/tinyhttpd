@@ -43,7 +43,7 @@
 
 #define SERVER_STRING "Server: jdbhttpd/0.1.0\r\n"
 
-void* accept_request(void*);                                         /*  与客户端交互                 */
+void* accept_request(void*);                                         /* 与客户端交互                  */
 void  bad_request(int);                                              /* 客户端请求错误                */
 void  cat(int, FILE *);                                              /* 将文件内容发给客户端          */
 void  cannot_execute(int);                                           /* cgi程序执行错误               */
@@ -73,7 +73,7 @@ void read_and_discard_heads(int client){
  */
 int main(void) {
  	int server_sock;                               
- 	int client_sock;
+ 	int *client_sock;
  	struct sockaddr_in client_name;
  	socklen_t client_name_len = sizeof(client_name);
  	pthread_t newthread;
@@ -81,12 +81,13 @@ int main(void) {
 	server_sock = get_server_socket(); /*获取服务器端的套结字*/
 
  	while (1) {
-  		client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
-  		if (client_sock == -1)
+		client_sock = (int*)malloc(sizeof(int));
+  		*client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
+  		if (*client_sock == -1)
    			error_die("accept");
 		printf( " client ip: %s client port: %d \n", inet_ntoa(client_name.sin_addr), ntohs(client_name.sin_port) );
  		/* accept_request(client_sock); */
- 		if (pthread_create(&newthread , NULL, accept_request, &client_sock) != 0)
+ 		if (pthread_create(&newthread , NULL, accept_request, client_sock) != 0)
    			perror("pthread_create");
  	}
 
@@ -173,6 +174,8 @@ void* accept_request(void* arg) {
  	struct stat st;
  	int cgi = 0;      /* becomes true if server decides this is a CGI program */
  	char *query_string = NULL;
+
+	free(arg);
 
  	get_line(client, buf, sizeof(buf));
 
