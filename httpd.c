@@ -52,6 +52,14 @@ void read_and_discard_heads(int client){
 		;
 }
 
+void output_server_message( int server ) {
+ 	struct sockaddr_in server_name;
+	socklen_t server_name_len = sizeof(server_name);
+
+  	getsockname(server, (struct sockaddr *)&server_name, &server_name_len);
+	printf( " server ip: %s server port: %d \n", inet_ntoa(server_name.sin_addr), ntohs(server_name.sin_port) );
+}
+
 /**********************************************************************/
 /*  
  *  get_server_socket() ---> accept() ---> pthread_create()  --
@@ -64,6 +72,8 @@ int main(void) {
  	int server_sock = get_server_socket();
  	int *client_sock;
  	pthread_t newthread;
+
+	output_server_message(server_sock);
 
  	while (1) {
 		client_sock = (int*)malloc(sizeof(int));
@@ -78,6 +88,7 @@ int main(void) {
 
  	return 0;
 }
+
 
 /****************************************************************************************/
 /*
@@ -98,13 +109,6 @@ int get_server_socket() {
  	name.sin_addr.s_addr = htonl(INADDR_ANY);
  	if (bind(httpd_sock, (struct sockaddr *)&name, sizeof(name)) < 0)
   		print_error_and_exit("bind");
- 	if (port == 0)  /* if dynamically allocating a port */{
-  		socklen_t namelen = sizeof(name);
-  		if (getsockname(httpd_sock, (struct sockaddr *)&name, &namelen) == -1)
-   			print_error_and_exit("getsockname");
-  		port = ntohs(name.sin_port);
- 	}
- 	printf("httpd running on port %d\n", port);
  	if (listen(httpd_sock, 5) < 0)
   		print_error_and_exit("listen");
 
