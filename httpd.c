@@ -47,7 +47,7 @@ void* accept_request(void*);                                         /* 与客�
 void  bad_request(int);                                              /* 客户端请求错误                */
 void  cat(int, FILE *);                                              /* 将文件内容发给客户端          */
 void  cannot_execute(int);                                           /* cgi程序执行错误               */
-void  error_die(const char *);                                       /* 打印错误，退出                */
+void  print_error_and_exit(const char *);                            
 void  execute_cgi(int, const char *, const char *, const char *);    /* 执行cgi程序                   */
 int   get_line(int, char *, int);                                    /* 从客户端获取一行              */
 void  headers(int, const char *);                                    /* 将http头部信息发给客户端      */
@@ -71,6 +71,7 @@ void read_and_discard_heads(int client){
  *  3. 产生新的线程处理与客户端的连接
  *  4. 新线程处理与客户端的连接，主进程跳回第2步
  */
+/**********************************************************************/
 int main(void) {
  	int server_sock;                               
  	int *client_sock;
@@ -84,7 +85,7 @@ int main(void) {
 		client_sock = (int*)malloc(sizeof(int));
   		*client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
   		if (*client_sock == -1)
-   			error_die("accept");
+   			print_error_and_exit("accept");
 		printf( " client ip: %s client port: %d \n", inet_ntoa(client_name.sin_addr), ntohs(client_name.sin_port) );
  		/* accept_request(client_sock); */
  		if (pthread_create(&newthread , NULL, accept_request, client_sock) != 0)
@@ -96,22 +97,11 @@ int main(void) {
  	return 0;
 }
 
-/**********************************************************************/
-/* This function starts the process of listening for web connections
- * on a specified port.  If the port is 0, then dynamically allocate a
- * port and modify the original port variable to reflect the actual
- * port.
- * Parameters: pointer to variable containing the port to connect on
- * Returns: the socket */
-/***********************************************************************/
-/* get_server_socket() 获取服务器套结字
- * 1. 创建socket套结字
- * 2. 创建sockaddr_in结构体，并将指定ip和端口号将其填充
- * 3. 将socket套结字与sockaddr_in结构体相绑定
- * 4. 如果是动态分配端口号，则通过getsockname()获取其端口号, 并输出
- * 5. 将该socket套结字转为被动套结字，并处于监听状态
- * 6. 返回该套结字
+/****************************************************************************************/
+/*
+ * socket() -----> bind() ----->  listen()
  */
+/****************************************************************************************/
 int get_server_socket() {
  	int httpd_sock;
  	u_short port = 0;
@@ -119,34 +109,28 @@ int get_server_socket() {
 
  	httpd_sock = socket(PF_INET, SOCK_STREAM, 0);
  	if (httpd_sock == -1)
-  		error_die("socket");
+  		print_error_and_exit("socket");
  	memset(&name, 0, sizeof(name));
  	name.sin_family = AF_INET;
  	name.sin_port = htons(port);
  	name.sin_addr.s_addr = htonl(INADDR_ANY);
  	if (bind(httpd_sock, (struct sockaddr *)&name, sizeof(name)) < 0)
-  		error_die("bind");
+  		print_error_and_exit("bind");
  	if (port == 0)  /* if dynamically allocating a port */{
   		socklen_t namelen = sizeof(name);
   		if (getsockname(httpd_sock, (struct sockaddr *)&name, &namelen) == -1)
-   			error_die("getsockname");
+   			print_error_and_exit("getsockname");
   		port = ntohs(name.sin_port);
  	}
  	printf("httpd running on port %d\n", port);
  	if (listen(httpd_sock, 5) < 0)
-  		error_die("listen");
+  		print_error_and_exit("listen");
 
  	return httpd_sock;
 }
 
-/**********************************************************************/
-/* Print out an error message with perror() (for system errors; based
- * on value of errno, which indicates system call errors) and exit the
- * program indicating an error. */
-/**********************************************************************/
-/* 输出异常并退出   */
-void error_die(const char *sc) {
- 	perror(sc);
+void print_error_and_exit(const char *st) {
+ 	perror(st);
  	exit(1);
 }
 
