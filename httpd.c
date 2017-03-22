@@ -4,21 +4,9 @@
  * CSE 4344 (Network concepts), Prof. Zeigler
  * University of Texas at Arlington
  */
-/* This program compiles for Sparc Solaris 2.6.
- * To compile for Linux:
- *  1) Comment out the #include <pthread.h> line.
- *  2) Comment out the line that defines the variable newthread.
- *  3) Comment out the two lines that run pthread_create().
- *  4) Uncomment the line that runs accept_request().
- *  5) Remove -lsocket from the Makefile.
- */
+
 /*
  *add by liuyunbin
- *   
- *   修改makefile:去掉 -lsocket,将-lpthread改为-pthread
- *   修改htdocs中的perl路径
- *  
- *   修改了部分程序，并添加了注释------------------------画蛇添足
  *   
  *   http请求报文包括
  *   1. 请求行 requestline：包括请求方法字段(get或post),URL字段和HTTP协议版本字段
@@ -49,7 +37,7 @@ void  cat(int, FILE *);                                              /* 将文�
 void  cannot_execute(int);                                           /* cgi程序执行错误               */
 void  print_error_and_exit(const char *);                            
 void  execute_cgi(int, const char *, const char *, const char *);    /* 执行cgi程序                   */
-int   get_line(int, char *, int);                                    /* 从客户端获取一行              */
+int   get_line_from_socket(int, char *, int);                                    /* 从客户端获取一行              */
 void  headers(int, const char *);                                    /* 将http头部信息发给客户端      */
 void  not_found(int);                                                /* 资源未找到                    */
 void  serve_file(int, const char *);                                 /* 将cgi文件发给客户端           */
@@ -60,36 +48,30 @@ void  unimplemented(int);                                            /* http请�
 void read_and_discard_heads(int client){
 	char buf[1024];
 
-	while (get_line(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0)  /* read & discard headers */
+	while (get_line_from_socket(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0)  /* read & discard headers */
 		;
 }
 
 /**********************************************************************/
-/*  main() 主函数
- *  1. 创建服务器套结字
- *  2. 等待客户端的连接
- *  3. 产生新的线程处理与客户端的连接
- *  4. 新线程处理与客户端的连接，主进程跳回第2步
+/*  
+ *  get_server_socket() ---> accept() ---> pthread_create()  --
+ *                             ^                              |
+ *                             |                              |   
+ *                             --------------------------------  
  */
 /**********************************************************************/
 int main(void) {
- 	int server_sock;                               
+ 	int server_sock = get_server_socket();
  	int *client_sock;
- 	struct sockaddr_in client_name;
- 	socklen_t client_name_len = sizeof(client_name);
  	pthread_t newthread;
-
-	server_sock = get_server_socket(); /*获取服务器端的套结字*/
 
  	while (1) {
 		client_sock = (int*)malloc(sizeof(int));
-  		*client_sock = accept(server_sock, (struct sockaddr *)&client_name, &client_name_len);
+  		*client_sock = accept(server_sock, NULL, NULL);
   		if (*client_sock == -1)
    			print_error_and_exit("accept");
-		printf( " client ip: %s client port: %d \n", inet_ntoa(client_name.sin_addr), ntohs(client_name.sin_port) );
- 		/* accept_request(client_sock); */
  		if (pthread_create(&newthread , NULL, accept_request, client_sock) != 0)
-   			perror("pthread_create");
+   			print_error_and_exit("pthread_create");
  	}
 
  	close(server_sock);
@@ -134,6 +116,14 @@ void print_error_and_exit(const char *st) {
  	exit(1);
 }
 
+void output_client_message( int client ) {
+ 	struct sockaddr_in client_name;
+	socklen_t client_name_len = sizeof(client_name);
+
+  	getpeername(client, (struct sockaddr *)&client_name, &client_name_len);
+	printf( " client ip: %s client port: %d \n", inet_ntoa(client_name.sin_addr), ntohs(client_name.sin_port) );
+}
+
 /**********************************************************************/
 /* A request has caused a call to accept() on the server port to
  * return.  Process the request appropriately.
@@ -160,9 +150,9 @@ void* accept_request(void* arg) {
  	char *query_string = NULL;
 
 	free(arg);
+	output_client_message(client);  	
 
- 	get_line(client, buf, sizeof(buf));
-
+	get_line_from_socket(client, buf, sizeof(buf));
 	method = strtok(buf, " ");
  	if (method == NULL || (strcasecmp(method, "GET") != 0 && strcasecmp(method, "POST")) != 0) {
   		unimplemented(client);
@@ -218,21 +208,8 @@ void* accept_request(void* arg) {
  	return NULL;
 }
 
-/**********************************************************************/
-/* Get a line from a socket, whether the line ends in a newline,
- * carriage return, or a CRLF combination.  Terminates the string read
- * with a null character.  If no newline indicator is found before the
- * end of the buffer, the string is terminated with a null.  If any of
- * the above three line terminators is read, the last character of the
- * string will be a linefeed and the string will be terminated with a
- * null character.
- * Parameters: the socket descriptor
- *             the buffer to save the data in
- *             the size of the buffer
- * Returns: the number of bytes stored (excluding null) */
-/**********************************************************************/
 /*从客户端读取一行字符，将\r\n和\r换成\n*/
-int get_line(int sock, char *buf, int size) {
+int get_line_from_socket(int sock, char *buf, int size) {
  	int i = 0;
  	char c = '\0';
 
@@ -337,7 +314,7 @@ void execute_cgi(int client, const char *path, const char *method, const char *q
  	if (strcasecmp(method, "GET") == 0)
    		read_and_discard_heads(client);
  	else    /* POST */ {
-  		while (get_line(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0){
+  		while (get_line_from_socket(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0){
    			buf[15] = '\0';
    			if (strcasecmp(buf, "Content-Length:") == 0)
     				content_length = atoi(buf+16);
