@@ -335,14 +335,14 @@ void* accept_request(void* arg) {
 	}
 	snprintf(path, sizeof(path), "htdocs%s", url);
  	if (path[strlen(path) - 1] == '/')
- 		strcat( path, "index.html");
+ 		snprintf( path+strlen(path), sizeof(path)-strlen(path), "index.html");
  	if (stat(path, &st) == -1) {
 		read_and_discard_heads(client);
   		not_found(client);
  	}
  	else {
   		if ((st.st_mode&S_IFMT) == S_IFDIR)
-   			strcat(path, "/index.html");
+ 			snprintf( path+strlen(path), sizeof(path)-strlen(path), "/index.html");
   		if ((st.st_mode&S_IXUSR) || (st.st_mode&S_IXGRP) || (st.st_mode&S_IXOTH) )
    			cgi = 1;
   		if (cgi == 0)
