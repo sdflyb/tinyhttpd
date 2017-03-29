@@ -128,8 +128,9 @@ void execute_cgi(int client, const char *path, const char *method, const char *q
  	char c;
 	int content_length = -1;
 
- 	if (strcasecmp(method, "GET") == 0)
+ 	if (strcasecmp(method, "GET") == 0) {
    		read_and_discard_heads(client);
+	}
  	else    /* POST */ {
   		while (get_line_from_socket(client, buf, sizeof(buf)) > 0 && strcmp("\n", buf) != 0) {
    			buf[15] = '\0';
@@ -244,11 +245,11 @@ void serve_file(int client, const char *filename) {
  	if (resource == NULL) {
   		not_found(client);
 	}
- 	else {
+	else {
   		headers(client, filename);
- 		while (fgets(buf, sizeof(buf), resource) != NULL)
+		while (fgets(buf, sizeof(buf), resource) != NULL)
   			send(client, buf, strlen(buf), 0);
- 	}
+	}
  	fclose(resource);
 }
 
@@ -308,7 +309,6 @@ void* accept_request(void* arg) {
  	struct stat st;
  	int cgi = 0;      /* becomes true if server decides this is a CGI program */
  	char *query_string = NULL;
-
 	free(arg);
 	output_client_message(client);
 	get_line_from_socket(client, buf, sizeof(buf));
@@ -333,17 +333,16 @@ void* accept_request(void* arg) {
    			*query_string++ = '\0';
  		}
 	}
-
 	snprintf(path, sizeof(path), "htdocs%s", url);
  	if (path[strlen(path) - 1] == '/')
- 		snprintf(path, strlen(path), "%s%s", path, "index.html");
+ 		strcat( path, "index.html");
  	if (stat(path, &st) == -1) {
 		read_and_discard_heads(client);
   		not_found(client);
  	}
  	else {
   		if ((st.st_mode&S_IFMT) == S_IFDIR)
-   			snprintf(path, strlen(path), "%s%s", path, "/index.html");
+   			strcat(path, "/index.html");
   		if ((st.st_mode&S_IXUSR) || (st.st_mode&S_IXGRP) || (st.st_mode&S_IXOTH) )
    			cgi = 1;
   		if (cgi == 0)
@@ -369,7 +368,7 @@ void output_server_message(int server) {
  *     socket() -----> bind() ----->  listen()
  */
 /****************************************************************************************/
-int get_server_socket() {
+int get_server_socket(void) {
  	int httpd_sock;
  	u_short port = 0;
  	struct sockaddr_in name;
@@ -409,7 +408,7 @@ int main(void) {
   		*client_sock = accept(server_sock, NULL, NULL);
   		if (*client_sock == -1)
    			print_error_and_exit("accept");
- 		if (pthread_create(&newthread , NULL, accept_request, client_sock) != 0)
+ 		if (pthread_create(&newthread, NULL, accept_request, client_sock) != 0)
    			print_error_and_exit("pthread_create");
  	}
 
