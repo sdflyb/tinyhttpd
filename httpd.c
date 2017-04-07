@@ -57,7 +57,6 @@ int get_line_from_socket(int sock, char *buf, int size) {
  	return i;
 }
 
-/* 读取并忽略header之前的信息   */
 void read_and_discard_heads(int client) {
 	char buf[1024];
 
@@ -102,13 +101,11 @@ void cannot_execute(int client) {
 
 
 /**********************************************************************/
-/* Execute a CGI script.  Will need to set environment variables as
- * appropriate.
- * Parameters: client socket descriptor
- *             path to the CGI script */
+/* Execute a CGI script.  Will need to set environment variables as appropriate.
+ * Parameters: client socket descriptor path to the CGI script */
 /**********************************************************************/
-/* execute_cgi()  执行文件
- * 1. 创建两个管道，cgi_output[2]用于子程序向主程序传递信息, cgi_input[2]用于主程序向子程序传递信息
+/* execute_cgi()
+ * 1. 创建两个管道，cgi_output 用于子程序向主程序传递信息, cgi_input 用于主程序向子程序传递信息
  * 2. 子程序：
  *            将标准输出重定向到cgi_output[1], 将标准输入重定向到cgi_input[0]
  *            关闭管道cgi_output[0]的输入口,cgi_input[1]的输出口
@@ -187,7 +184,7 @@ void execute_cgi(int client, const char *path, const char *method, const char *q
   		close(cgi_output[0]);
  		close(cgi_input[1]);
   		waitpid(pid, NULL, 0);
- 	}
+	}
 }
 
 /**********************************************************************/
@@ -309,6 +306,7 @@ void* accept_request(void* arg) {
  	struct stat st;
  	int cgi = 0;      /* becomes true if server decides this is a CGI program */
  	char *query_string = NULL;
+
 	free(arg);
 	output_client_message(client);
 	get_line_from_socket(client, buf, sizeof(buf));
@@ -390,10 +388,7 @@ int get_server_socket(void) {
 
 /**********************************************************************/
 /*  
- *  get_server_socket() ---> accept() ---> pthread_create()  --
- *                             ^                              |
- *                             |                              |   
- *                             --------------------------------  
+ *  get_server_socket() ---> accept() ---> pthread_create()
  */
 /**********************************************************************/
 int main(void) {
